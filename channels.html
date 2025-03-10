@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Channels - SCC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      input[type="checkbox"] {
+        margin: 3px;
+      }
+      select {
+        margin-left: 5px;
+        width: 80px;
+      }
+      label {
+        width: 40px;
+        display: inline-block;
+        position: relative;
+        top: -2px;
+        font-size: 20px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 0.2fr 0.34fr 9fr 0.57fr;
+      }
+
+      .row span.channel {
+        width: 40px;
+      }
+
+      .row span.assignemnt {
+        width: 80px;
+      }
+
+      .row span {
+        font-weight: 700;
+        font-size: 20px;
+      }
+      .row:hover {
+        background-color: #e9e9e9;
+      }
+      .error {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: black;
+        color: white;
+        padding: 0 5px 10px 5px;
+        font-weight: 700;
+      }
+      .error img {
+        position: relative;
+        top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="error">
+      <img
+        src="https://nrkno.github.io/yr-warning-icons/png/icon-warning-extreme.png"
+        width="25px"
+      />Disconnected from server<img
+        src="https://nrkno.github.io/yr-warning-icons/png/icon-warning-extreme.png"
+        width="25px"
+      />
+    </div>
+    <h1>Simple Channel Control</h1>
+    <hr />
+    <div>
+      <a href="/">Channels</a>
+      <a href="/recalls">Recalls</a>
+      <a href="/dimmers">Dimmers</a>
+    </div>
+    <hr />
+    <div>
+      <input type="color" id="recallColor" name="recallColor" />
+      <input type="text" id="recallName" placeholder="Recall Name" />
+      <button id="recallSave">Save To Recall</button>
+      <span id="recallMessage"></span>
+    </div>
+    <hr />
+    <div class="row">
+      <input type="checkbox" /> <span class="channel">#</span>
+      <span class="dmxSlider">Channel Slider</span>
+      <span class="assignemnt">Type</span>
+    </div>
+    <hr />
+    <div class="universe"></div>
+    <script src="https://cdn.rangetouch.com/2.0.1/rangetouch.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      let mixer = document.querySelector(".universe");
+      let channelTypes = [];
+      let channelAssignments = {};
+
+      const socket = io();
+      let connError = document.querySelector(".error");
+      socket.on("connect", () => {
+        connError.style.display = "none";
+      });
+
+      socket.on("disconnect", () => {
+        connError.style.display = "block";
+      });
+
+      socket.on("channel-types", (msg) => {
+        channelTypes = msg;
+        updateSelects();
+      });
+
+      socket.on("channel-assignments", (msg) => {
+        channelAssignments = msg;
+        updateAssignments();
+      });
+
+      socket.on("universe", (universe) => {
+        mixer.innerHTML = "";
+        let values = Object.entries(universe);
+        for (let i = 0; i < values.length; i++) {
+          let channel = i;
+          let wrapper = document.createElement("div");
+          wrapper.classList.add("row");
+
+          let label = document.createElement("label");
+          label.innerText = `${i + 1}`;
+          label.setAttribute("for", `channel-${channel}-select`);
+
+          let checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `channel-${channel}-select`;
+
+          let input = document.createElement("input");
+          input.type = "range";
+          input.id = `channel-${channel}`;
+          input.min = "0";
+          input.max = "255";
+          input.value = values[i][1];
+
+          let type = document.createElement("select");
+          type.type = "select";
+          type.id = `channel-${channel}-type`;
+
+          let selected = document.createElement("option");
+          selected.innerText = "None";
+          selected.value = 0;
+          selected.selected = true;
+          type.appendChild(selected);
+          type.addEventListener("change", (e) => {
+            if (e.target.value !== "0")
+              socket.emit(`set-channel-type`, {
+                channel: channel,
+                value: e.target.value,
+              });
+            else socket.emit(`remove-channel-type`, { channel: channel });
+          });
+
+          wrapper.appendChild(checkbox);
+          wrapper.appendChild(label);
+          wrapper.appendChild(input);
+          wrapper.appendChild(type);
+          mixer.appendChild(wrapper);
+          input.addEventListener("input", (e) => {
+            let val = e.target.value;
+            socket.emit(`set-channel`, { channel: channel, value: val });
+          });
+        }
+        let ranges = RangeTouch.setup('input[type="range"]', { watch: true });
+        updateSelects();
+      });
+
+      socket.on("channel-update", (channel) => {
+        console.log(channel);
+        let values = Object.entries(channel);
+        for (let i = 0; i < values.length; i++) {
+          let input = document.querySelector(
+            `#channel-${parseInt(values[i][0])}`
+          );
+          if (input) input.value = values[i][1];
+        }
+      });
+
+      let recallSaveBTN = document.querySelector("#recallSave");
+      let recallSaveName = document.querySelector("#recallName");
+      let recallSaveMSG = document.querySelector("#recallMessage");
+
+      socket.on("recalls", (msg) => {
+        console.log(msg);
+        let urlParams = new URLSearchParams(window.location.search);
+        let paramValue = urlParams.get("recall");
+
+        // tableBody.innerHTML = "";
+        if (!paramValue) return;
+        for (let [name, obj] of msg) {
+          if (paramValue == name) {
+            recallSaveName.value = name;
+            document.querySelector("#recallColor").value = obj.color;
+            for (let [channel, value] of Object.entries(obj.channels)) {
+              let checkbox = document.querySelector(
+                `#channel-${channel}-select`
+              );
+              if (checkbox) checkbox.checked = true;
+            }
+          }
+          //   let row = document.createElement("tr");
+          //   row.innerHTML = `<td>${name}</td><td class="channels">${renderDMXTable(
+          //     channels
+          //   )}</td><td>
+          //           <button onclick="edit('${name}')">edit</button>
+          //           <button onclick="deleteRecall('${name}')">delete</button></td>`;
+
+          //   tableBody.appendChild(row);
+          //   // console.log(row);
+        }
+      });
+
+      recallSaveBTN.addEventListener("click", saveRecall);
+
+      const recallRegex = /^[a-zA-Z]+$/;
+
+      socket.on("recall-saved", (msg) => {
+        if (msg?.updated)
+          recallSaveMSG.innerHTML = `Recall <b>${msg.name}</b> has been updated!`;
+        else
+          recallSaveMSG.innerHTML = `Recall <b>${msg.name}</b> has been saved!`;
+
+        let allCheckboxes = Array.from(
+          document.querySelectorAll('.universe input[type="checkbox"]')
+        );
+        let selectedChannels = allCheckboxes.filter(
+          (chk) => chk.checked == true
+        );
+        for (let selected of selectedChannels) {
+          selected.checked = false;
+        }
+        recallSaveName.value = "";
+      });
+
+      function saveRecall() {
+        let allCheckboxes = Array.from(
+          document.querySelectorAll('.universe input[type="checkbox"]')
+        );
+        let selectedChannels = allCheckboxes.filter(
+          (chk) => chk.checked == true
+        );
+
+        let recallName = recallSaveName?.value;
+
+        if (selectedChannels.length == 0)
+          recallSaveMSG.innerText = "No channels selected.";
+        else if (recallName == "")
+          recallSaveMSG.innerText = "Enter recall name.";
+        else if (!recallRegex.test(recallName))
+          recallSaveMSG.innerText = "Invalid recall name.";
+        else {
+          let obj = {};
+          for (let selected of selectedChannels) {
+            let channel = selected.id.split("-")[1];
+            let slider = document.querySelector(` #channel-${channel}`);
+            obj[`${channel}`] = slider.value;
+          }
+          socket.emit("save-recall", {
+            name: recallName,
+            color: document.querySelector("#recallColor").value,
+            channels: obj,
+          });
+        }
+      }
+
+      function updateSelects() {
+        let selects = document.querySelectorAll(".universe select");
+
+        for (let select of selects) {
+          select.innerHTML = "";
+          let selected = document.createElement("option");
+          selected.innerText = "";
+          selected.value = 0;
+          select.appendChild(selected);
+
+          for (let channelType of channelTypes) {
+            let type = document.createElement("option");
+            type.innerText = channelType;
+            type.value = channelType;
+            // selected.selected = false;
+            select.appendChild(type);
+          }
+        }
+      }
+      function updateAssignments() {
+        let assignments = Object.entries(channelAssignments);
+        for (let i = 0; i < assignments.length; i++) {
+          let select = document.querySelector(
+            `#channel-${assignments[i][0]}-type`
+          );
+          if (select) select.value = assignments[i][1];
+        }
+      }
+    </script>
+  </body>
+</html>

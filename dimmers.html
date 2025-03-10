@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dimmers - SCC</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        font-family: Helvetica, Arial, sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      input[type="checkbox"] {
+        margin: 3px;
+      }
+      select {
+        margin-left: 5px;
+        width: 80px;
+      }
+      label {
+        width: 40px;
+        display: inline-block;
+        position: relative;
+        top: -2px;
+        font-size: 20px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 9fr 0.57fr;
+      }
+
+      .row span.channel {
+        width: 40px;
+      }
+
+      .row span.assignemnt {
+        width: 80px;
+      }
+
+      .row span {
+        font-weight: 700;
+        font-size: 20px;
+      }
+      .row:hover {
+        background-color: #e9e9e9;
+      }
+      .error {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: black;
+        color: white;
+        padding: 0 5px 10px 5px;
+        font-weight: 700;
+      }
+      .error img {
+        position: relative;
+        top: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="error">
+      <img
+        src="https://nrkno.github.io/yr-warning-icons/png/icon-warning-extreme.png"
+        width="25px"
+      />Disconnected from server<img
+        src="https://nrkno.github.io/yr-warning-icons/png/icon-warning-extreme.png"
+        width="25px"
+      />
+    </div>
+    <h1>Dimmer Group Control</h1>
+    <hr />
+    <a href="/">Channels</a>
+    <a href="/recalls">Recalls</a>
+    <a href="/dimmers">Dimmers</a>
+    <hr />
+    <div class="row">
+      <span class="channel">Name</span>
+      <span class="dmxSlider"></span>
+      <span class="assignemnt">Type</span>
+    </div>
+    <hr />
+    <div class="universe"></div>
+    <script src="https://cdn.rangetouch.com/2.0.1/rangetouch.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      let connError = document.querySelector(".error");
+      socket.on("connect", () => {
+        connError.style.display = "none";
+      });
+
+      socket.on("disconnect", () => {
+        connError.style.display = "block";
+      });
+
+      let mixer = document.querySelector(".universe");
+
+      socket.on("channel-types", (msg) => {
+        // console.log(msg);
+        mixer.innerHTML = ""
+        for (let type of msg) {
+          let wrapper = document.createElement("div");
+          wrapper.classList.add("row");
+
+          let label = document.createElement("label");
+          label.innerText = type;
+
+          let input = document.createElement("input");
+          input.type = "range";
+          input.id = `dimmer-${type}`;
+          input.min = "0";
+          input.max = "255";
+          input.value = 0;
+
+          input.addEventListener("input", (e) => {
+            let value = e.target.value;
+            socket.emit(`set-type`, { type, value });
+          });
+
+          wrapper.appendChild(label);
+          wrapper.appendChild(input);
+
+          mixer.appendChild(wrapper);
+        }
+        // channelAssignments = msg;
+        // updateAssignments();
+      });
+    </script>
+  </body>
+</html>
