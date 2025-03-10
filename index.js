@@ -32,7 +32,7 @@ let channelTypes = ["dimmer", "red", "green", "blue", "white", "temp", "iris"];
 let channelAssignments = {};
 let recalls = {};
 
-app.get("/", (req, res) => {
+app.get("/channels", (req, res) => {
   res.sendFile(join(__dirname, "channels.html"));
 });
 app.get("/recalls", (req, res) => {
@@ -43,6 +43,9 @@ app.get("/dimmers", (req, res) => {
 });
 app.get("/controller", (req, res) => {
   res.sendFile(join(__dirname, "controller.html"));
+});
+app.get("/asset/rangetouch.js", (req, res) => {
+  res.sendFile(join(__dirname, "rangetouch.js"));
 });
 
 server.listen(80, () => {
