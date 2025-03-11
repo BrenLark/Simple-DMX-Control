@@ -28,7 +28,7 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-let channelTypes = ["dimmer", "red", "green", "blue", "white", "temp", "iris"];
+let channelTypes = ["dimmer", "red", "green", "blue", "white", "temp", "iris", "hue", "saturation", "brightness"];
 let channelAssignments = {};
 let recalls = {};
 
@@ -56,7 +56,7 @@ server.listen(80, () => {
   try {
     let project = await readFile("./project.json");
     let json = JSON.parse(project)
-    channelTypes = json.channelTypes;
+    // channelTypes = json.channelTypes;
     channelAssignments = json.channelAssignments;
     recalls = json.recalls;
 
@@ -126,7 +126,7 @@ io.on("connection", (socket) => {
     }
 
     socket.broadcast.emit("type-update", msg);
-    socket.broadcast.emit("channel-update", channels);
+    io.emit("channel-update", channels);
     DMXServer.update("main", channels);
     // console.log(msg)
   });
@@ -158,7 +158,7 @@ io.on("connection", (socket) => {
   socket.on("recall", (name) => {
     let recall = recalls[name];
     if (recall) {
-      console.log(recall)
+      // console.log(recall)
       DMXServer.update("main", recall.channels);
       io.emit("channel-update", recall.channels);
       socket.broadcast.emit("recall-update", name)

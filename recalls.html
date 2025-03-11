@@ -4,9 +4,14 @@
     <title>Recalls - SCC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
+      :root {
+        color-scheme: dark;
+      }
       body {
         font-family: Helvetica, Arial, sans-serif;
         font-variant-numeric: tabular-nums;
+        background-color: black;
+        color: white;
       }
       input[type="range"] {
         width: 70%;
@@ -60,11 +65,11 @@
 
       table.dmx td,
       table.dmx th {
-        border: 1px solid black;
+        border: 1px solid rgb(45, 45, 45);
       }
 
       table.main > tbody > tr:hover {
-        background-color: #e9e9e9;
+        background-color: #3e3e3e;
       }
 
       .error {
@@ -170,7 +175,7 @@
       }
 
       function edit(name) {
-        window.location.href = `/?recall=${name}`;
+        window.location.href = `/channels?recall=${name}`;
       }
 
       function deleteRecall(name) {
@@ -182,6 +187,8 @@
       function recall(name) {
         socket.emit("recall", name);
       }
+
+      
     </script>
   </body>
 </html>

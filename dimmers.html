@@ -4,9 +4,14 @@
     <title>Dimmers - SCC</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
+      :root {
+        color-scheme: dark;
+      }
       body {
         font-family: Helvetica, Arial, sans-serif;
         font-variant-numeric: tabular-nums;
+        background-color: black;
+        color: white;
       }
       input[type="range"] {
         width: 100%;
@@ -27,7 +32,7 @@
       }
       .row {
         display: grid;
-        grid-template-columns: 1fr 9fr 0.57fr;
+        grid-template-columns: 95px 9fr;
       }
 
       .row span.channel {
@@ -43,7 +48,7 @@
         font-size: 20px;
       }
       .row:hover {
-        background-color: #e9e9e9;
+        background-color: #3e3e3e;
       }
       .error {
         position: absolute;
@@ -79,7 +84,7 @@
     <div class="row">
       <span class="channel">Name</span>
       <span class="dmxSlider"></span>
-      <span class="assignemnt">Type</span>
+      <!-- <span class="assignemnt">Type</span> -->
     </div>
     <hr />
     <div class="universe"></div>
@@ -100,7 +105,7 @@
 
       socket.on("channel-types", (msg) => {
         // console.log(msg);
-        mixer.innerHTML = ""
+        mixer.innerHTML = "";
         for (let type of msg) {
           let wrapper = document.createElement("div");
           wrapper.classList.add("row");
@@ -127,6 +132,18 @@
         }
         // channelAssignments = msg;
         // updateAssignments();
+      });
+      // socket.on("type-update", (msg) => {
+      //   if (msg.type == "dimmer") inputRange.value = msg.value;
+      //   updateBG();
+      // });
+      socket.on("type-update", (msg) => {
+        console.log(msg);
+        let [type, value] = Object.values(msg)
+        console.log(type, value)
+        let input = document.getElementById(`dimmer-${type}`);
+        input.value = value;
+
       });
     </script>
   </body>
